@@ -1,5 +1,5 @@
 import { defineHandler } from "nitro/h3";
-import { getQuery, setResponseHeader } from "nitro/h3";
+import { getQuery } from "nitro/h3";
 import {
   searchMovies,
   searchTv,
@@ -24,7 +24,7 @@ function filterByEpisode(
   return results.filter((r) => {
     const match = r.title.match(EPISODE_REGEX);
     if (!match) return true; // season packs without episode numbers pass through
-    return parseInt(match[1], 10) === epNum;
+    return parseInt(match[1]!, 10) === epNum;
   });
 }
 
@@ -133,7 +133,7 @@ async function handleGeneralSearch(
     return buildSearchResultsXml([]);
   }
 
-  const top = titleResults[0];
+  const top = titleResults[0]!;
 
   if (top.type === "show") {
     const results = await searchTv(top.imdbid, query.season || "1");
@@ -154,7 +154,7 @@ async function resolveImdbId(
   if (titleResults.length === 0) return undefined;
 
   const matched = titleResults.find((r) => r.type === preferType);
-  return (matched || titleResults[0]).imdbid;
+  return (matched ?? titleResults[0])!.imdbid;
 }
 
 async function filterAvailable(
@@ -171,6 +171,7 @@ async function filterAvailable(
 export default defineHandler(async (event) => {
   const query = getQuery(event) as Partial<TorznabQuery>;
   const result = await handleTorznabRequest(query);
-  setResponseHeader(event, "Content-Type", result.contentType);
-  return result.body;
+  return new Response(result.body, {
+    headers: { "Content-Type": result.contentType },
+  });
 });
