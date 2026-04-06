@@ -1,0 +1,67 @@
+import type { TorznabItem } from "../types.js";
+
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+export function buildCapsXml(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<caps>
+  <server title="DMM Indexer"/>
+  <searching>
+    <search available="yes" supportedParams="q"/>
+    <tv-search available="yes" supportedParams="q,season,ep,imdbid"/>
+    <movie-search available="yes" supportedParams="q,imdbid"/>
+  </searching>
+  <categories>
+    <category id="2000" name="Movies"/>
+    <category id="5000" name="TV"/>
+  </categories>
+</caps>`;
+}
+
+export function buildSearchResultsXml(items: TorznabItem[]): string {
+  const now = new Date().toUTCString();
+
+  const itemsXml = items
+    .map(
+      (item) => `    <item>
+      <title>${escapeXml(item.title)}</title>
+      <guid>${escapeXml(item.magnetUrl)}</guid>
+      <pubDate>${now}</pubDate>
+      <size>${item.size}</size>
+      <link>${escapeXml(item.magnetUrl)}</link>
+      <enclosure url="${escapeXml(item.magnetUrl)}" length="${item.size}" type="application/x-bittorrent"/>
+      <torznab:attr name="category" value="${item.category}"/>
+      <torznab:attr name="seeders" value="0"/>
+      <torznab:attr name="peers" value="0"/>
+      <torznab:attr name="infohash" value="${item.hash}"/>
+      <torznab:attr name="magneturl" value="${escapeXml(item.magnetUrl)}"/>
+      <torznab:attr name="downloadvolumefactor" value="0"/>
+      <torznab:attr name="uploadvolumefactor" value="1"/>
+    </item>`
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <channel>
+    <title>DMM Indexer</title>
+    <description>Debrid Media Manager Torznab Indexer</description>
+    <link>http://localhost:3000</link>
+    <language>en-us</language>
+    <category>search</category>
+${itemsXml}
+  </channel>
+</rss>`;
+}
+
+export function buildErrorXml(code: number, description: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<error code="${code}" description="${escapeXml(description)}"/>`;
+}
