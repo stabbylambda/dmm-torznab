@@ -102,7 +102,7 @@ describe("checkAvailability", () => {
 
     // Should have been called twice (100 + 50)
     const availCalls = mockFetch.mock.calls.filter(
-      (c: [string, ...unknown[]]) => c[0].includes("/api/availability/check")
+      (c) => String(c[0]).includes("/api/availability/check")
     );
     expect(availCalls).toHaveLength(2);
     expect(available).toHaveLength(1);
