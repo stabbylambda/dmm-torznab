@@ -1,0 +1,176 @@
+import { defineHandler } from "nitro/h3";
+import { getQuery, setResponseHeader } from "nitro/h3";
+import {
+  searchMovies,
+  searchTv,
+  searchTitle,
+  checkAvailability,
+} from "../lib/dmm-client.js";
+import {
+  buildCapsXml,
+  buildSearchResultsXml,
+  buildErrorXml,
+} from "../lib/torznab.js";
+import type { TorznabQuery, DmmSearchResult } from "../types.js";
+
+// Episode pattern: S01E05, s01e05, S1E5, etc.
+const EPISODE_REGEX = /[Ss]\d{1,2}[Ee](\d{1,3})/;
+
+function filterByEpisode(
+  results: DmmSearchResult[],
+  episode: string
+): DmmSearchResult[] {
+  const epNum = parseInt(episode, 10);
+  return results.filter((r) => {
+    const match = r.title.match(EPISODE_REGEX);
+    if (!match) return true; // season packs without episode numbers pass through
+    return parseInt(match[1], 10) === epNum;
+  });
+}
+
+function toTorznabItems(
+  results: DmmSearchResult[],
+  category: number
+) {
+  return results.map((r) => ({
+    title: r.title,
+    hash: r.hash.toLowerCase(),
+    size: Math.round(r.fileSize * 1024 * 1024), // MB to bytes
+    category,
+    magnetUrl: `magnet:?xt=urn:btih:${r.hash.toLowerCase()}`,
+  }));
+}
+
+interface TorznabResponse {
+  contentType: string;
+  body: string;
+}
+
+export async function handleTorznabRequest(
+  query: Partial<TorznabQuery>
+): Promise<TorznabResponse> {
+  const xml = (body: string): TorznabResponse => ({
+    contentType: "application/xml",
+    body,
+  });
+
+  if (!query.t) {
+    return xml(buildErrorXml(200, "Missing parameter: t"));
+  }
+
+  if (query.t === "caps") {
+    return xml(buildCapsXml());
+  }
+
+  try {
+    switch (query.t) {
+      case "movie":
+        return xml(await handleMovieSearch(query));
+      case "tvsearch":
+        return xml(await handleTvSearch(query));
+      case "search":
+        return xml(await handleGeneralSearch(query));
+      default:
+        return xml(buildErrorXml(202, `Unsupported function: ${query.t}`));
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return xml(buildErrorXml(100, message));
+  }
+}
+
+async function handleMovieSearch(
+  query: Partial<TorznabQuery>
+): Promise<string> {
+  let imdbId = query.imdbid;
+
+  if (!imdbId && query.q) {
+    imdbId = await resolveImdbId(query.q, "movie");
+  }
+
+  if (!imdbId) {
+    return buildSearchResultsXml([]);
+  }
+
+  const results = await searchMovies(imdbId);
+  const available = await filterAvailable(imdbId, results);
+  return buildSearchResultsXml(toTorznabItems(available, 2000));
+}
+
+async function handleTvSearch(
+  query: Partial<TorznabQuery>
+): Promise<string> {
+  let imdbId = query.imdbid;
+
+  if (!imdbId && query.q) {
+    imdbId = await resolveImdbId(query.q, "show");
+  }
+
+  if (!imdbId) {
+    return buildSearchResultsXml([]);
+  }
+
+  const season = query.season || "1";
+  let results = await searchTv(imdbId, season);
+
+  if (query.ep) {
+    results = filterByEpisode(results, query.ep);
+  }
+
+  const available = await filterAvailable(imdbId, results);
+  return buildSearchResultsXml(toTorznabItems(available, 5000));
+}
+
+async function handleGeneralSearch(
+  query: Partial<TorznabQuery>
+): Promise<string> {
+  if (!query.q) {
+    return buildSearchResultsXml([]);
+  }
+
+  const titleResults = await searchTitle(query.q);
+  if (titleResults.length === 0) {
+    return buildSearchResultsXml([]);
+  }
+
+  const top = titleResults[0];
+
+  if (top.type === "show") {
+    const results = await searchTv(top.imdbid, query.season || "1");
+    const available = await filterAvailable(top.imdbid, results);
+    return buildSearchResultsXml(toTorznabItems(available, 5000));
+  }
+
+  const results = await searchMovies(top.imdbid);
+  const available = await filterAvailable(top.imdbid, results);
+  return buildSearchResultsXml(toTorznabItems(available, 2000));
+}
+
+async function resolveImdbId(
+  query: string,
+  preferType: string
+): Promise<string | undefined> {
+  const titleResults = await searchTitle(query);
+  if (titleResults.length === 0) return undefined;
+
+  const matched = titleResults.find((r) => r.type === preferType);
+  return (matched || titleResults[0]).imdbid;
+}
+
+async function filterAvailable(
+  imdbId: string,
+  results: DmmSearchResult[]
+): Promise<DmmSearchResult[]> {
+  const hashes = results.map((r) => r.hash.toLowerCase());
+  const available = await checkAvailability(imdbId, hashes);
+  const availableSet = new Set(available.map((a) => a.hash.toLowerCase()));
+
+  return results.filter((r) => availableSet.has(r.hash.toLowerCase()));
+}
+
+export default defineHandler(async (event) => {
+  const query = getQuery(event) as Partial<TorznabQuery>;
+  const result = await handleTorznabRequest(query);
+  setResponseHeader(event, "Content-Type", result.contentType);
+  return result.body;
+});
