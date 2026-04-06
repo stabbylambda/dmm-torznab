@@ -1,0 +1,127 @@
+import { generateTokenAndHash } from "./dmm-token.js";
+import type {
+  DmmSearchResult,
+  DmmSearchResponse,
+  DmmTitleResult,
+  DmmTitleSearchResponse,
+  DmmAvailabilityResult,
+  DmmAvailabilityResponse,
+} from "../types.js";
+
+const DMM_API_URL =
+  process.env.DMM_API_URL || "https://debridmediamanager.com";
+const ONLY_TRUSTED = process.env.ONLY_TRUSTED === "true";
+const MAX_SIZE_MB = process.env.MAX_SIZE_MB
+  ? parseInt(process.env.MAX_SIZE_MB, 10)
+  : undefined;
+
+async function dmmFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(`${DMM_API_URL}/${path}`, init);
+}
+
+export async function searchMovies(
+  imdbId: string
+): Promise<DmmSearchResult[]> {
+  const [dmmProblemKey, solution] = await generateTokenAndHash();
+
+  const params = new URLSearchParams({
+    imdbId,
+    dmmProblemKey,
+    solution,
+    onlyTrusted: String(ONLY_TRUSTED),
+  });
+  if (MAX_SIZE_MB !== undefined) {
+    params.set("maxSize", String(MAX_SIZE_MB));
+  }
+
+  const response = await dmmFetch(`api/torrents/movie?${params}`);
+
+  if (response.status === 204) {
+    return [];
+  }
+
+  if (!response.ok) {
+    throw new Error(`DMM movie search failed: ${response.status}`);
+  }
+
+  const data: DmmSearchResponse = await response.json();
+  return data.results;
+}
+
+export async function searchTv(
+  imdbId: string,
+  seasonNum: string
+): Promise<DmmSearchResult[]> {
+  const [dmmProblemKey, solution] = await generateTokenAndHash();
+
+  const params = new URLSearchParams({
+    imdbId,
+    seasonNum,
+    dmmProblemKey,
+    solution,
+    onlyTrusted: String(ONLY_TRUSTED),
+  });
+  if (MAX_SIZE_MB !== undefined) {
+    params.set("maxSize", String(MAX_SIZE_MB));
+  }
+
+  const response = await dmmFetch(`api/torrents/tv?${params}`);
+
+  if (response.status === 204) {
+    return [];
+  }
+
+  if (!response.ok) {
+    throw new Error(`DMM TV search failed: ${response.status}`);
+  }
+
+  const data: DmmSearchResponse = await response.json();
+  return data.results;
+}
+
+export async function searchTitle(
+  keyword: string
+): Promise<DmmTitleResult[]> {
+  const params = new URLSearchParams({ keyword });
+  const response = await dmmFetch(`api/search/title?${params}`);
+
+  if (!response.ok) {
+    throw new Error(`DMM title search failed: ${response.status}`);
+  }
+
+  const data: DmmTitleSearchResponse = await response.json();
+  return data.results;
+}
+
+export async function checkAvailability(
+  imdbId: string,
+  hashes: string[]
+): Promise<DmmAvailabilityResult[]> {
+  const results: DmmAvailabilityResult[] = [];
+  const batchSize = 100;
+
+  for (let i = 0; i < hashes.length; i += batchSize) {
+    const batch = hashes.slice(i, i + batchSize);
+    const [dmmProblemKey, solution] = await generateTokenAndHash();
+
+    const response = await dmmFetch("api/availability/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imdbId,
+        hashes: batch,
+        dmmProblemKey,
+        solution,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`DMM availability check failed: ${response.status}`);
+    }
+
+    const data: DmmAvailabilityResponse = await response.json();
+    results.push(...data.available);
+  }
+
+  return results;
+}
