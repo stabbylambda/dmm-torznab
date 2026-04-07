@@ -38,8 +38,8 @@ export function buildSearchResultsXml(items: TorznabItem[]): string {
       <link>${escapeXml(item.magnetUrl)}</link>
       <enclosure url="${escapeXml(item.magnetUrl)}" length="${item.size}" type="application/x-bittorrent"/>
       <torznab:attr name="category" value="${item.category}"/>
-      <torznab:attr name="seeders" value="0"/>
-      <torznab:attr name="peers" value="0"/>
+      <torznab:attr name="seeders" value="1"/>
+      <torznab:attr name="peers" value="1"/>
       <torznab:attr name="infohash" value="${item.hash}"/>
       <torznab:attr name="magneturl" value="${escapeXml(item.magnetUrl)}"/>
       <torznab:attr name="downloadvolumefactor" value="0"/>
