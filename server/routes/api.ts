@@ -13,6 +13,12 @@ import {
 } from "../lib/torznab.js";
 import type { TorznabQuery, DmmSearchResult } from "../types.js";
 
+// Prowlarr sends IMDb IDs without the "tt" prefix
+function normalizeImdbId(id: string): string {
+  if (/^\d+$/.test(id)) return `tt${id}`;
+  return id;
+}
+
 // Episode pattern: S01E05, s01e05, S1E5, etc.
 const EPISODE_REGEX = /[Ss]\d{1,2}[Ee](\d{1,3})/;
 
@@ -75,14 +81,17 @@ export async function handleTorznabRequest(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return xml(buildErrorXml(100, message));
+    console.error(`[ERR] ${message}`);
+    // Return empty results instead of error XML for transient failures
+    // (rate limits, timeouts). Error XML causes Prowlarr to disable the indexer.
+    return xml(buildSearchResultsXml([]));
   }
 }
 
 async function handleMovieSearch(
   query: Partial<TorznabQuery>
 ): Promise<string> {
-  let imdbId = query.imdbid;
+  let imdbId = query.imdbid ? normalizeImdbId(query.imdbid) : undefined;
 
   if (!imdbId && query.q) {
     imdbId = await resolveImdbId(query.q, "movie");
@@ -100,7 +109,7 @@ async function handleMovieSearch(
 async function handleTvSearch(
   query: Partial<TorznabQuery>
 ): Promise<string> {
-  let imdbId = query.imdbid;
+  let imdbId = query.imdbid ? normalizeImdbId(query.imdbid) : undefined;
 
   if (!imdbId && query.q) {
     imdbId = await resolveImdbId(query.q, "show");
@@ -126,19 +135,20 @@ async function handleGeneralSearch(
 ): Promise<string> {
   // Radarr/Sonarr sometimes send t=search with imdbid instead of t=movie
   if (query.imdbid) {
+    const imdbId = normalizeImdbId(query.imdbid);
     if (query.season) {
-      const results = await searchTv(query.imdbid, query.season);
+      const results = await searchTv(imdbId, query.season);
       if (query.ep) {
         const filtered = filterByEpisode(results, query.ep);
-        const available = await filterAvailable(query.imdbid, filtered);
+        const available = await filterAvailable(imdbId, filtered);
         return buildSearchResultsXml(toTorznabItems(available, 5000));
       }
-      const available = await filterAvailable(query.imdbid, results);
+      const available = await filterAvailable(imdbId, results);
       return buildSearchResultsXml(toTorznabItems(available, 5000));
     }
     // Default to movie search when imdbid provided without season
-    const results = await searchMovies(query.imdbid);
-    const available = await filterAvailable(query.imdbid, results);
+    const results = await searchMovies(imdbId);
+    const available = await filterAvailable(imdbId, results);
     return buildSearchResultsXml(toTorznabItems(available, 2000));
   }
 
