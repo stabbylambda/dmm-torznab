@@ -170,7 +170,24 @@ async function filterAvailable(
 
 export default defineHandler(async (event) => {
   const query = getQuery(event) as Partial<TorznabQuery>;
+  const start = Date.now();
+
+  const params = new URLSearchParams();
+  if (query.t) params.set("t", query.t);
+  if (query.q) params.set("q", query.q);
+  if (query.imdbid) params.set("imdbid", query.imdbid);
+  if (query.season) params.set("season", query.season);
+  if (query.ep) params.set("ep", query.ep);
+
+  console.log(`[REQ] /api?${params}`);
+
   const result = await handleTorznabRequest(query);
+  const ms = Date.now() - start;
+
+  const isError = result.body.includes("<error");
+  const itemCount = (result.body.match(/<item>/g) || []).length;
+  console.log(`[RES] /api?${params} → ${isError ? "ERROR" : `${itemCount} results`} (${ms}ms)`);
+
   return new Response(result.body, {
     headers: { "Content-Type": result.contentType },
   });
