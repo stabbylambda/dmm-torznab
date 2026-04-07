@@ -13,7 +13,7 @@ describe("buildCapsXml", () => {
     expect(xml).toContain("<caps>");
     expect(xml).toContain('<server title="DMM Indexer"');
     expect(xml).toContain('<search available="yes"');
-    expect(xml).toContain('supportedParams="q"');
+    expect(xml).toContain('supportedParams="q,imdbid"');
     expect(xml).toContain('<tv-search available="yes"');
     expect(xml).toContain('supportedParams="q,season,ep,imdbid"');
     expect(xml).toContain('<movie-search available="yes"');

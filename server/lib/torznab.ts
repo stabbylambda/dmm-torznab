@@ -14,7 +14,7 @@ export function buildCapsXml(): string {
 <caps>
   <server title="DMM Indexer"/>
   <searching>
-    <search available="yes" supportedParams="q"/>
+    <search available="yes" supportedParams="q,imdbid"/>
     <tv-search available="yes" supportedParams="q,season,ep,imdbid"/>
     <movie-search available="yes" supportedParams="q,imdbid"/>
   </searching>

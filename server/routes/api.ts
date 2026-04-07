@@ -124,6 +124,24 @@ async function handleTvSearch(
 async function handleGeneralSearch(
   query: Partial<TorznabQuery>
 ): Promise<string> {
+  // Radarr/Sonarr sometimes send t=search with imdbid instead of t=movie
+  if (query.imdbid) {
+    if (query.season) {
+      const results = await searchTv(query.imdbid, query.season);
+      if (query.ep) {
+        const filtered = filterByEpisode(results, query.ep);
+        const available = await filterAvailable(query.imdbid, filtered);
+        return buildSearchResultsXml(toTorznabItems(available, 5000));
+      }
+      const available = await filterAvailable(query.imdbid, results);
+      return buildSearchResultsXml(toTorznabItems(available, 5000));
+    }
+    // Default to movie search when imdbid provided without season
+    const results = await searchMovies(query.imdbid);
+    const available = await filterAvailable(query.imdbid, results);
+    return buildSearchResultsXml(toTorznabItems(available, 2000));
+  }
+
   // Prowlarr sends bare ?t=search with no query as a connection test.
   // Fall back to a known title so we return at least one result.
   const searchQuery = query.q || "Inception";
