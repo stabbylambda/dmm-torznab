@@ -53,7 +53,7 @@ export function buildSearchResultsXml(items: TorznabItem[]): string {
   <channel>
     <title>DMM Indexer</title>
     <description>Debrid Media Manager Torznab Indexer</description>
-    <link>http://localhost:3000</link>
+    <link>https://github.com/stabbylambda/dmm-torznab</link>
     <language>en-us</language>
     <category>search</category>
 ${itemsXml}
