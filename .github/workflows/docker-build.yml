@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  APP_NAME: dmm-torznab
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute version
+        id: version
+        run: echo "version=1.${{ github.run_number }}.0" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.APP_NAME }}:${{ steps.version.outputs.version }} .
+
+      - name: Push Docker image
+        if: github.event_name == 'push'
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.APP_NAME }}:${{ steps.version.outputs.version }}
+
+  helm-chart:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Compute version
+        id: version
+        run: echo "version=1.${{ github.run_number }}.0" >> "$GITHUB_OUTPUT"
+
+      - name: Set chart version and image tag
+        if: github.event_name == 'push'
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${{ steps.version.outputs.version }}\"/" chart/Chart.yaml
+          sed -i "s/tag:.*/tag: \"${{ steps.version.outputs.version }}\"/" chart/values.yaml
+
+      - name: Lint chart
+        run: helm lint chart/
+
+      - name: Package chart
+        if: github.event_name == 'push'
+        run: helm package chart/
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push chart to OCI registry
+        if: github.event_name == 'push'
+        run: helm push ${{ env.APP_NAME }}-${{ steps.version.outputs.version }}.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: helm-chart
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Load secrets from 1Password
+        uses: 1password/load-secrets-action@v4
+        with:
+          export-env: true
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          TS_OAUTH_CLIENT_ID: "op://Github Actions/GitHub Actions CI/TS_OAUTH_CLIENT_ID"
+          TS_OAUTH_SECRET: "op://Github Actions/GitHub Actions CI/TS_OAUTH_SECRET"
+          FLUX_WEBHOOK_URL: "op://Github Actions/GitHub Actions CI/FLUX_WEBHOOK_URL"
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ env.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ env.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Trigger Flux reconciliation
+        run: |
+          curl -sf --retry 3 --retry-delay 2 -X POST "${{ env.FLUX_WEBHOOK_URL }}" || echo "Webhook failed — Flux will poll as fallback"

@@ -1,0 +1,5 @@
+image:
+  repository: ghcr.io/stabbylambda/dmm-torznab
+  tag: latest
+
+timezone: America/Los_Angeles

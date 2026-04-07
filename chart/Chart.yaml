@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dmm-torznab
+description: DMM Torznab indexer for Prowlarr
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

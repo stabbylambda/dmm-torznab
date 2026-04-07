@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dmm-torznab.fullname" . }}
+  labels:
+    {{- include "dmm-torznab.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "dmm-torznab.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dmm-torznab.selectorLabels" . | nindent 8 }}
+    spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: dmm-torznab
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: TZ
+              value: {{ .Values.timezone | quote }}
