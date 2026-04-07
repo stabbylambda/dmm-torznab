@@ -15,8 +15,15 @@ const MAX_SIZE_MB = process.env.MAX_SIZE_MB
   ? parseInt(process.env.MAX_SIZE_MB, 10)
   : undefined;
 
+const DMM_HEADERS: Record<string, string> = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+  "Referer": "https://debridmediamanager.com/",
+  "Accept": "application/json, text/plain, */*",
+};
+
 async function dmmFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(`${DMM_API_URL}/${path}`, init);
+  const headers = { ...DMM_HEADERS, ...(init.headers as Record<string, string> || {}) };
+  return fetch(`${DMM_API_URL}/${path}`, { ...init, headers });
 }
 
 export async function searchMovies(
