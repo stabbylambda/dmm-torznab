@@ -7,9 +7,9 @@ let cachedTimestampAt = 0;
 const TIMESTAMP_CACHE_MS = 10_000;
 
 function generateRandomToken(): string {
-  const array = new Uint32Array(4);
+  const array = new Uint32Array(1);
   crypto.getRandomValues(array);
-  return Array.from(array, (v) => v.toString(16).padStart(8, "0")).join("");
+  return array[0]!.toString(16);
 }
 
 export async function fetchTimestamp(): Promise<number> {

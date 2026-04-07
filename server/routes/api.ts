@@ -124,11 +124,11 @@ async function handleTvSearch(
 async function handleGeneralSearch(
   query: Partial<TorznabQuery>
 ): Promise<string> {
-  if (!query.q) {
-    return buildSearchResultsXml([]);
-  }
+  // Prowlarr sends bare ?t=search with no query as a connection test.
+  // Fall back to a known title so we return at least one result.
+  const searchQuery = query.q || "Inception";
 
-  const titleResults = await searchTitle(query.q);
+  const titleResults = await searchTitle(searchQuery);
   if (titleResults.length === 0) {
     return buildSearchResultsXml([]);
   }
@@ -173,11 +173,9 @@ export default defineHandler(async (event) => {
   const start = Date.now();
 
   const params = new URLSearchParams();
-  if (query.t) params.set("t", query.t);
-  if (query.q) params.set("q", query.q);
-  if (query.imdbid) params.set("imdbid", query.imdbid);
-  if (query.season) params.set("season", query.season);
-  if (query.ep) params.set("ep", query.ep);
+  for (const [k, v] of Object.entries(query)) {
+    if (v != null) params.set(k, String(v));
+  }
 
   console.log(`[REQ] /api?${params}`);
 
