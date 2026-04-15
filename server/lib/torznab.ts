@@ -45,6 +45,7 @@ export function buildSearchResultsXml(items: TorznabItem[]): string {
       <size>${item.size}</size>
       <link>${escapeXml(item.magnetUrl)}</link>
       <enclosure url="${escapeXml(item.magnetUrl)}" length="${item.size}" type="application/x-bittorrent"/>
+      <newznab:attr name="category" value="${item.category}"/>
       <torznab:attr name="category" value="${item.category}"/>
       <torznab:attr name="seeders" value="1"/>
       <torznab:attr name="peers" value="1"/>
@@ -57,7 +58,7 @@ export function buildSearchResultsXml(items: TorznabItem[]): string {
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:torznab="http://torznab.com/schemas/2015/feed">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" xmlns:torznab="http://torznab.com/schemas/2015/feed">
   <channel>
     <title>DMM Indexer</title>
     <description>Debrid Media Manager Torznab Indexer</description>
