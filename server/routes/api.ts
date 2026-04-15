@@ -34,15 +34,25 @@ function filterByEpisode(
   });
 }
 
+// Newznab subcategories by resolution
+// Movies: 2030=SD, 2040=HD, 2045=UHD
+// TV:     5030=SD, 5040=HD, 5045=UHD
+function resolveCategory(title: string, baseCategory: number): number {
+  const t = title.toLowerCase();
+  if (/2160p|4k|uhd/i.test(t)) return baseCategory + 45;
+  if (/1080p|720p|bluray|blu-ray/i.test(t)) return baseCategory + 40;
+  return baseCategory + 30; // SD fallback
+}
+
 function toTorznabItems(
   results: DmmSearchResult[],
-  category: number
+  baseCategory: number
 ) {
   return results.map((r) => ({
     title: r.title,
     hash: r.hash.toLowerCase(),
     size: Math.round(r.fileSize * 1024 * 1024), // MB to bytes
-    category,
+    category: resolveCategory(r.title, baseCategory),
     magnetUrl: `magnet:?xt=urn:btih:${r.hash.toLowerCase()}`,
   }));
 }

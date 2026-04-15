@@ -44,7 +44,7 @@ describe("handleTorznabRequest", () => {
     const result = await handleTorznabRequest({ t: "movie", imdbid: "tt1234567" });
     expect(searchMovies).toHaveBeenCalledWith("tt1234567");
     expect(result.body).toContain("Test.Movie.2024");
-    expect(result.body).toContain('<torznab:attr name="category" value="2000"');
+    expect(result.body).toContain('<torznab:attr name="category" value="2030"');
   });
 
   it("searches TV by imdbid and season for t=tvsearch", async () => {
@@ -62,7 +62,7 @@ describe("handleTorznabRequest", () => {
     });
     expect(searchTv).toHaveBeenCalledWith("tt9999999", "2");
     expect(result.body).toContain("Show.S02E05.720p");
-    expect(result.body).toContain('<torznab:attr name="category" value="5000"');
+    expect(result.body).toContain('<torznab:attr name="category" value="5040"');
   });
 
   it("filters by episode number when ep is provided", async () => {

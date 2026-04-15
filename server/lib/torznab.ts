@@ -19,8 +19,16 @@ export function buildCapsXml(): string {
     <movie-search available="yes" supportedParams="q,imdbid"/>
   </searching>
   <categories>
-    <category id="2000" name="Movies"/>
-    <category id="5000" name="TV"/>
+    <category id="2000" name="Movies">
+      <subcat id="2030" name="Movies/SD"/>
+      <subcat id="2040" name="Movies/HD"/>
+      <subcat id="2045" name="Movies/UHD"/>
+    </category>
+    <category id="5000" name="TV">
+      <subcat id="5030" name="TV/SD"/>
+      <subcat id="5040" name="TV/HD"/>
+      <subcat id="5045" name="TV/UHD"/>
+    </category>
   </categories>
 </caps>`;
 }

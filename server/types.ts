@@ -58,6 +58,6 @@ export interface TorznabItem {
   title: string;
   hash: string;
   size: number; // bytes
-  category: number; // 2000 or 5000
+  category: number; // Newznab subcategory (e.g. 2040=Movies/HD, 5045=TV/UHD)
   magnetUrl: string;
 }

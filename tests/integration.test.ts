@@ -54,7 +54,7 @@ describe("end-to-end Torznab flow", () => {
     // Only the available movie should be in results
     expect(result.body).toContain("Movie.2024.1080p.BluRay");
     expect(result.body).not.toContain("Movie.2024.720p.WEB");
-    expect(result.body).toContain('<torznab:attr name="category" value="2000"');
+    expect(result.body).toContain('<torznab:attr name="category" value="2040"');
     expect(result.body).toContain(`magnet:?xt=urn:btih:${"a".repeat(40)}`);
   });
 });
