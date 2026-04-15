@@ -45,7 +45,9 @@ export function buildSearchResultsXml(items: TorznabItem[]): string {
       <size>${item.size}</size>
       <link>${escapeXml(item.magnetUrl)}</link>
       <enclosure url="${escapeXml(item.magnetUrl)}" length="${item.size}" type="application/x-bittorrent"/>
+      <newznab:attr name="category" value="${item.parentCategory}"/>
       <newznab:attr name="category" value="${item.category}"/>
+      <torznab:attr name="category" value="${item.parentCategory}"/>
       <torznab:attr name="category" value="${item.category}"/>
       <torznab:attr name="seeders" value="1"/>
       <torznab:attr name="peers" value="1"/>

@@ -52,6 +52,7 @@ function toTorznabItems(
     title: r.title,
     hash: r.hash.toLowerCase(),
     size: Math.round(r.fileSize * 1024 * 1024), // MB to bytes
+    parentCategory: baseCategory,
     category: resolveCategory(r.title, baseCategory),
     magnetUrl: `magnet:?xt=urn:btih:${r.hash.toLowerCase()}`,
   }));
