@@ -156,10 +156,19 @@ async function handleGeneralSearch(
       const available = await filterAvailable(imdbId, results);
       return buildSearchResultsXml(toTorznabItems(available, 5000));
     }
-    // Default to movie search when imdbid provided without season
-    const results = await searchMovies(imdbId);
-    const available = await filterAvailable(imdbId, results);
-    return buildSearchResultsXml(toTorznabItems(available, 2000));
+    // No season provided — try both movie and TV to determine the right category
+    const [movieResults, tvResults] = await Promise.all([
+      searchMovies(imdbId),
+      searchTv(imdbId, "1"),
+    ]);
+    const [movieAvail, tvAvail] = await Promise.all([
+      filterAvailable(imdbId, movieResults),
+      filterAvailable(imdbId, tvResults),
+    ]);
+    return buildSearchResultsXml([
+      ...toTorznabItems(movieAvail, 2000),
+      ...toTorznabItems(tvAvail, 5000),
+    ]);
   }
 
   // Prowlarr sends bare ?t=search with no query as a connection test.
