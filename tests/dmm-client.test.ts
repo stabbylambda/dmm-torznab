@@ -5,6 +5,7 @@ import {
   searchTitle,
   checkAvailability,
 } from "../server/lib/dmm-client.js";
+import { clearCache } from "../server/lib/cache.js";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -16,6 +17,7 @@ vi.mock("../server/lib/dmm-token.js", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  clearCache();
 });
 
 describe("searchMovies", () => {
