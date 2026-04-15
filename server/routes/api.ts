@@ -104,8 +104,11 @@ async function handleMovieSearch(
 ): Promise<string> {
   let imdbId = query.imdbid ? normalizeImdbId(query.imdbid) : undefined;
 
-  if (!imdbId && query.q) {
-    imdbId = await resolveImdbId(query.q, "movie");
+  if (!imdbId) {
+    // Radarr/Sonarr send bare t=movie as a connection test.
+    // Fall back to a known title so we return at least one result.
+    const keyword = query.q || "Inception";
+    imdbId = await resolveImdbId(keyword, "movie");
   }
 
   if (!imdbId) {
@@ -122,8 +125,11 @@ async function handleTvSearch(
 ): Promise<string> {
   let imdbId = query.imdbid ? normalizeImdbId(query.imdbid) : undefined;
 
-  if (!imdbId && query.q) {
-    imdbId = await resolveImdbId(query.q, "show");
+  if (!imdbId) {
+    // Sonarr sends bare t=tvsearch as a connection test.
+    // Fall back to a known title so we return at least one result.
+    const keyword = query.q || "Breaking Bad";
+    imdbId = await resolveImdbId(keyword, "show");
   }
 
   if (!imdbId) {
