@@ -116,6 +116,22 @@ describe("handleTorznabRequest", () => {
     expect(searchTv).toHaveBeenCalledWith("tt7777777", "1");
   });
 
+  it("uses a TV title for the fallback when q is absent and cat is TV", async () => {
+    vi.mocked(searchTitle).mockResolvedValue([]);
+
+    await handleTorznabRequest({ t: "search", cat: "5030,5040" });
+    const calledWith = vi.mocked(searchTitle).mock.calls[0]?.[0]?.toLowerCase() ?? "";
+    expect(calledWith).not.toContain("inception");
+    expect(calledWith.length).toBeGreaterThan(0);
+  });
+
+  it("uses a movie title for the fallback when q is absent and cat is movie", async () => {
+    vi.mocked(searchTitle).mockResolvedValue([]);
+
+    await handleTorznabRequest({ t: "search", cat: "2030,2040,2045" });
+    expect(searchTitle).toHaveBeenCalledWith("Inception");
+  });
+
   it("returns empty results when title search finds nothing", async () => {
     vi.mocked(searchTitle).mockResolvedValueOnce([]);
 

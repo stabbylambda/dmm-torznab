@@ -34,6 +34,11 @@ function filterByEpisode(
   });
 }
 
+function hasTvCategory(cat: string | undefined): boolean {
+  if (!cat) return false;
+  return cat.split(",").some((c) => /^\s*5\d{3}\s*$/.test(c));
+}
+
 // Newznab subcategories by resolution
 // Movies: 2030=SD, 2040=HD, 2045=UHD
 // TV:     5030=SD, 5040=HD, 5045=UHD
@@ -178,9 +183,10 @@ async function handleGeneralSearch(
     ]);
   }
 
-  // Prowlarr sends bare ?t=search with no query as a connection test.
-  // Fall back to a known title so we return at least one result.
-  const searchQuery = query.q || "Inception";
+  // Prowlarr sends bare ?t=search with no query as a connection test,
+  // and also downgrades empty ?t=tvsearch into ?t=search&cat=5xxx. Use cat
+  // to pick a same-kind fallback so we return items Sonarr/Radarr accept.
+  const searchQuery = query.q || (hasTvCategory(query.cat) ? "Breaking Bad" : "Inception");
 
   const titleResults = await searchTitle(searchQuery);
   if (titleResults.length === 0) {
